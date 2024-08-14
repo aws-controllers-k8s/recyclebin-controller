@@ -1,0 +1,20 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [{
+        "Effect": "Allow",
+        "Action": [
+            "rbin:CreateRule",
+            "rbin:UpdateRule",
+            "rbin:GetRule",
+            "rbin:ListRules",
+            "rbin:DeleteRule",
+            "rbin:TagResource",
+            "rbin:UntagResource",
+            "rbin:ListTagsForResource",
+            "rbin:LockRule",
+            "rbin:UnlockRule",
+            "tag:GetResources"
+        ],
+        "Resource": "*"
+    }]
+}

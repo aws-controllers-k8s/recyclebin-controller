@@ -27,3 +27,52 @@ var (
 	_ = &aws.JSONValue{}
 	_ = ackv1alpha1.AWSAccountID("")
 )
+
+// Information about a retention rule lock configuration.
+type LockConfiguration struct {
+	// Information about the retention rule unlock delay. The unlock delay is the
+	// period after which a retention rule can be modified or edited after it has
+	// been unlocked by a user with the required permissions. The retention rule
+	// can't be modified or deleted during the unlock delay.
+	UnlockDelay *UnlockDelay `json:"unlockDelay,omitempty"`
+}
+
+// Information about the resource tags used to identify resources that are retained
+// by the retention rule.
+type ResourceTag struct {
+	ResourceTagKey   *string `json:"resourceTagKey,omitempty"`
+	ResourceTagValue *string `json:"resourceTagValue,omitempty"`
+}
+
+// Information about the retention period for which the retention rule is to
+// retain resources.
+type RetentionPeriod struct {
+	RetentionPeriodUnit  *string `json:"retentionPeriodUnit,omitempty"`
+	RetentionPeriodValue *int64  `json:"retentionPeriodValue,omitempty"`
+}
+
+// Information about a Recycle Bin retention rule.
+type RuleSummary struct {
+	Description *string `json:"description,omitempty"`
+	Identifier  *string `json:"identifier,omitempty"`
+	LockState   *string `json:"lockState,omitempty"`
+	// Information about the retention period for which the retention rule is to
+	// retain resources.
+	RetentionPeriod *RetentionPeriod `json:"retentionPeriod,omitempty"`
+	RuleARN         *string          `json:"ruleARN,omitempty"`
+}
+
+// Information about the tags to assign to the retention rule.
+type Tag struct {
+	Key   *string `json:"key,omitempty"`
+	Value *string `json:"value,omitempty"`
+}
+
+// Information about the retention rule unlock delay. The unlock delay is the
+// period after which a retention rule can be modified or edited after it has
+// been unlocked by a user with the required permissions. The retention rule
+// can't be modified or deleted during the unlock delay.
+type UnlockDelay struct {
+	UnlockDelayUnit  *string `json:"unlockDelayUnit,omitempty"`
+	UnlockDelayValue *int64  `json:"unlockDelayValue,omitempty"`
+}

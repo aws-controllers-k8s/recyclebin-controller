@@ -9,6 +9,7 @@ rules:
 - apiGroups:
   - recyclebin.services.k8s.aws
   resources:
+  - rules
   verbs:
   - get
   - list

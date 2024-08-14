@@ -41,5 +41,5 @@ def k8s_client():
     return k8s._get_k8s_api_client()
 
 @pytest.fixture(scope='module')
-def rbin_client():
+def recycle_bin_client():
     return boto3.client('rbin')

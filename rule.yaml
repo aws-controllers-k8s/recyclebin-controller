@@ -1,0 +1,9 @@
+apiVersion: recyclebin.services.k8s.aws/v1alpha1
+kind: Rule
+metadata:
+  name: my-rule
+spec:
+  resourceType: "EC2_IMAGE"
+  retentionPeriod:
+    retentionPeriodUnit: "DAYS"
+    retentionPeriodValue: 50

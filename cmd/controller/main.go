@@ -39,6 +39,8 @@ import (
 	svcresource "github.com/aws-controllers-k8s/recyclebin-controller/pkg/resource"
 	svcsdk "github.com/aws/aws-sdk-go/service/recyclebin"
 
+	_ "github.com/aws-controllers-k8s/recyclebin-controller/pkg/resource/rule"
+
 	"github.com/aws-controllers-k8s/recyclebin-controller/pkg/version"
 )
 

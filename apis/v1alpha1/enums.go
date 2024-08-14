@@ -48,11 +48,11 @@ const (
 	RetentionPeriodUnit_DAYS RetentionPeriodUnit = "DAYS"
 )
 
-type RuleStatus string
+type RuleStatus_SDK string
 
 const (
-	RuleStatus_pending   RuleStatus = "pending"
-	RuleStatus_available RuleStatus = "available"
+	RuleStatus_SDK_pending   RuleStatus_SDK = "pending"
+	RuleStatus_SDK_available RuleStatus_SDK = "available"
 )
 
 type ServiceQuotaExceededExceptionReason string

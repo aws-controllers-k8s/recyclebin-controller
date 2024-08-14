@@ -31,6 +31,26 @@ rules:
   - patch
   - watch
 - apiGroups:
+  - recyclebin.services.k8s.aws
+  resources:
+  - rules
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - recyclebin.services.k8s.aws
+  resources:
+  - rules/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
   - services.k8s.aws
   resources:
   - adoptedresources
