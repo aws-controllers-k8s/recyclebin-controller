@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.16.2
   name: rules.recyclebin.services.k8s.aws
 spec:
   group: recyclebin.services.k8s.aws
@@ -68,10 +68,8 @@ spec:
                   not have any of the specified tag key and value pairs, it is immediately
                   deleted without being retained by the retention rule.
 
-
                   You can add the same tag key and value pair to a maximum or five retention
                   rules.
-
 
                   To create a Region-level retention rule, omit this parameter. A Region-level
                   retention rule does not have any resource tags specified. It retains all
@@ -139,7 +137,6 @@ spec:
                       when it has verified that an "adopted" resource (a resource where the
                       ARN annotation was set by the Kubernetes user on the CR) exists and
                       matches the supplied CR's Spec field values.
-                      TODO(vijat@): Find a better strategy for resources that do not have ARN in CreateOutputResponse
                       https://github.com/aws/aws-controllers-k8s/issues/270
                     type: string
                   ownerAccountID:
@@ -197,18 +194,14 @@ spec:
                 description: |-
                   The lock state for the retention rule.
 
-
                      * locked - The retention rule is locked and can't be modified or deleted.
-
 
                      * pending_unlock - The retention rule has been unlocked but it is still
                      within the unlock delay period. The retention rule can be modified or
                      deleted only after the unlock delay period has expired.
 
-
                      * unlocked - The retention rule is unlocked and it can be modified or
                      deleted by any user with the required permissions.
-
 
                      * null - The retention rule has never been locked. Once a retention rule
                      has been locked, it can transition between the locked and unlocked states
