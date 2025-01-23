@@ -3,7 +3,14 @@
 aliases:
   core-ack-team:
     - a-hilaly
-    - michaelhtm
     - jlbutler
-  # TODO: Add your team members' GitHub aliases to the team alias
-  service-team: []
+    - michaelhtm
+    - TiberiuGC
+    - rushmash91
+  # emeritus-core-ack-team:
+  #   - jaypipes
+  #   - jljaco
+  #   - mhausenblas
+  #   - RedbackThomson
+  #   - vijtrip2
+  #   - ivelichkovich
