@@ -24,9 +24,9 @@ const (
 type LockState string
 
 const (
-	LockState_locked         LockState = "locked"
-	LockState_pending_unlock LockState = "pending_unlock"
-	LockState_unlocked       LockState = "unlocked"
+	LockState_LOCKED         LockState = "LOCKED"
+	LockState_PENDING_UNLOCK LockState = "PENDING_UNLOCK"
+	LockState_UNLOCKED       LockState = "UNLOCKED"
 )
 
 type ResourceNotFoundExceptionReason string
@@ -51,8 +51,8 @@ const (
 type RuleStatus_SDK string
 
 const (
-	RuleStatus_SDK_pending   RuleStatus_SDK = "pending"
-	RuleStatus_SDK_available RuleStatus_SDK = "available"
+	RuleStatus_SDK_AVAILABLE RuleStatus_SDK = "AVAILABLE"
+	RuleStatus_SDK_PENDING   RuleStatus_SDK = "PENDING"
 )
 
 type ServiceQuotaExceededExceptionReason string

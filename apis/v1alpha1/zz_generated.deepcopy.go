@@ -161,6 +161,17 @@ func (in *RuleSpec) DeepCopyInto(out *RuleSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.ExcludeResourceTags != nil {
+		in, out := &in.ExcludeResourceTags, &out.ExcludeResourceTags
+		*out = make([]*ResourceTag, len(*in))
+		for i := range *in {
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = new(ResourceTag)
+				(*in).DeepCopyInto(*out)
+			}
+		}
+	}
 	if in.LockConfiguration != nil {
 		in, out := &in.LockConfiguration, &out.LockConfiguration
 		*out = new(LockConfiguration)

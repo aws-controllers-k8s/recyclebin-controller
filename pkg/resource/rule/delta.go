@@ -51,6 +51,13 @@ func newResourceDelta(
 			delta.Add("Spec.Description", a.ko.Spec.Description, b.ko.Spec.Description)
 		}
 	}
+	if len(a.ko.Spec.ExcludeResourceTags) != len(b.ko.Spec.ExcludeResourceTags) {
+		delta.Add("Spec.ExcludeResourceTags", a.ko.Spec.ExcludeResourceTags, b.ko.Spec.ExcludeResourceTags)
+	} else if len(a.ko.Spec.ExcludeResourceTags) > 0 {
+		if !reflect.DeepEqual(a.ko.Spec.ExcludeResourceTags, b.ko.Spec.ExcludeResourceTags) {
+			delta.Add("Spec.ExcludeResourceTags", a.ko.Spec.ExcludeResourceTags, b.ko.Spec.ExcludeResourceTags)
+		}
+	}
 	if ackcompare.HasNilDifference(a.ko.Spec.LockConfiguration, b.ko.Spec.LockConfiguration) {
 		delta.Add("Spec.LockConfiguration", a.ko.Spec.LockConfiguration, b.ko.Spec.LockConfiguration)
 	} else if a.ko.Spec.LockConfiguration != nil && b.ko.Spec.LockConfiguration != nil {
