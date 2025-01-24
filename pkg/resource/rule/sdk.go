@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"strings"
 
@@ -28,8 +29,9 @@ import (
 	ackerr "github.com/aws-controllers-k8s/runtime/pkg/errors"
 	ackrequeue "github.com/aws-controllers-k8s/runtime/pkg/requeue"
 	ackrtlog "github.com/aws-controllers-k8s/runtime/pkg/runtime/log"
-	"github.com/aws/aws-sdk-go/aws"
-	svcsdk "github.com/aws/aws-sdk-go/service/recyclebin"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	svcsdk "github.com/aws/aws-sdk-go-v2/service/rbin"
+	svcsdktypes "github.com/aws/aws-sdk-go-v2/service/rbin/types"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -40,8 +42,7 @@ import (
 var (
 	_ = &metav1.Time{}
 	_ = strings.ToLower("")
-	_ = &aws.JSONValue{}
-	_ = &svcsdk.RecycleBin{}
+	_ = &svcsdk.Client{}
 	_ = &svcapitypes.Rule{}
 	_ = ackv1alpha1.AWSAccountID("")
 	_ = &ackerr.NotFound
@@ -49,6 +50,7 @@ var (
 	_ = &reflect.Value{}
 	_ = fmt.Sprintf("")
 	_ = &ackrequeue.NoRequeue{}
+	_ = &aws.Config{}
 )
 
 // sdkFind returns SDK-specific information about a supplied resource
@@ -74,13 +76,11 @@ func (rm *resourceManager) sdkFind(
 	}
 
 	var resp *svcsdk.GetRuleOutput
-	resp, err = rm.sdkapi.GetRuleWithContext(ctx, input)
+	resp, err = rm.sdkapi.GetRule(ctx, input)
 	rm.metrics.RecordAPICall("READ_ONE", "GetRule", err)
 	if err != nil {
-		if reqErr, ok := ackerr.AWSRequestFailure(err); ok && reqErr.StatusCode() == 404 {
-			return nil, ackerr.NotFound
-		}
-		if awsErr, ok := ackerr.AWSError(err); ok && awsErr.Code() == "ResourceNotFoundException" {
+		var notFound *svcsdktypes.ResourceNotFoundException
+		if errors.As(err, &notFound) {
 			return nil, ackerr.NotFound
 		}
 		return nil, err
@@ -95,62 +95,80 @@ func (rm *resourceManager) sdkFind(
 	} else {
 		ko.Spec.Description = nil
 	}
+	if resp.ExcludeResourceTags != nil {
+		f1 := []*svcapitypes.ResourceTag{}
+		for _, f1iter := range resp.ExcludeResourceTags {
+			f1elem := &svcapitypes.ResourceTag{}
+			if f1iter.ResourceTagKey != nil {
+				f1elem.ResourceTagKey = f1iter.ResourceTagKey
+			}
+			if f1iter.ResourceTagValue != nil {
+				f1elem.ResourceTagValue = f1iter.ResourceTagValue
+			}
+			f1 = append(f1, f1elem)
+		}
+		ko.Spec.ExcludeResourceTags = f1
+	} else {
+		ko.Spec.ExcludeResourceTags = nil
+	}
 	if resp.Identifier != nil {
 		ko.Status.Identifier = resp.Identifier
 	} else {
 		ko.Status.Identifier = nil
 	}
 	if resp.LockConfiguration != nil {
-		f2 := &svcapitypes.LockConfiguration{}
+		f3 := &svcapitypes.LockConfiguration{}
 		if resp.LockConfiguration.UnlockDelay != nil {
-			f2f0 := &svcapitypes.UnlockDelay{}
-			if resp.LockConfiguration.UnlockDelay.UnlockDelayUnit != nil {
-				f2f0.UnlockDelayUnit = resp.LockConfiguration.UnlockDelay.UnlockDelayUnit
+			f3f0 := &svcapitypes.UnlockDelay{}
+			if resp.LockConfiguration.UnlockDelay.UnlockDelayUnit != "" {
+				f3f0.UnlockDelayUnit = aws.String(string(resp.LockConfiguration.UnlockDelay.UnlockDelayUnit))
 			}
 			if resp.LockConfiguration.UnlockDelay.UnlockDelayValue != nil {
-				f2f0.UnlockDelayValue = resp.LockConfiguration.UnlockDelay.UnlockDelayValue
+				unlockDelayValueCopy := int64(*resp.LockConfiguration.UnlockDelay.UnlockDelayValue)
+				f3f0.UnlockDelayValue = &unlockDelayValueCopy
 			}
-			f2.UnlockDelay = f2f0
+			f3.UnlockDelay = f3f0
 		}
-		ko.Spec.LockConfiguration = f2
+		ko.Spec.LockConfiguration = f3
 	} else {
 		ko.Spec.LockConfiguration = nil
 	}
-	if resp.LockState != nil {
-		ko.Status.LockState = resp.LockState
+	if resp.LockState != "" {
+		ko.Status.LockState = aws.String(string(resp.LockState))
 	} else {
 		ko.Status.LockState = nil
 	}
 	if resp.ResourceTags != nil {
-		f5 := []*svcapitypes.ResourceTag{}
-		for _, f5iter := range resp.ResourceTags {
-			f5elem := &svcapitypes.ResourceTag{}
-			if f5iter.ResourceTagKey != nil {
-				f5elem.ResourceTagKey = f5iter.ResourceTagKey
+		f6 := []*svcapitypes.ResourceTag{}
+		for _, f6iter := range resp.ResourceTags {
+			f6elem := &svcapitypes.ResourceTag{}
+			if f6iter.ResourceTagKey != nil {
+				f6elem.ResourceTagKey = f6iter.ResourceTagKey
 			}
-			if f5iter.ResourceTagValue != nil {
-				f5elem.ResourceTagValue = f5iter.ResourceTagValue
+			if f6iter.ResourceTagValue != nil {
+				f6elem.ResourceTagValue = f6iter.ResourceTagValue
 			}
-			f5 = append(f5, f5elem)
+			f6 = append(f6, f6elem)
 		}
-		ko.Spec.ResourceTags = f5
+		ko.Spec.ResourceTags = f6
 	} else {
 		ko.Spec.ResourceTags = nil
 	}
-	if resp.ResourceType != nil {
-		ko.Spec.ResourceType = resp.ResourceType
+	if resp.ResourceType != "" {
+		ko.Spec.ResourceType = aws.String(string(resp.ResourceType))
 	} else {
 		ko.Spec.ResourceType = nil
 	}
 	if resp.RetentionPeriod != nil {
-		f7 := &svcapitypes.RetentionPeriod{}
-		if resp.RetentionPeriod.RetentionPeriodUnit != nil {
-			f7.RetentionPeriodUnit = resp.RetentionPeriod.RetentionPeriodUnit
+		f8 := &svcapitypes.RetentionPeriod{}
+		if resp.RetentionPeriod.RetentionPeriodUnit != "" {
+			f8.RetentionPeriodUnit = aws.String(string(resp.RetentionPeriod.RetentionPeriodUnit))
 		}
 		if resp.RetentionPeriod.RetentionPeriodValue != nil {
-			f7.RetentionPeriodValue = resp.RetentionPeriod.RetentionPeriodValue
+			retentionPeriodValueCopy := int64(*resp.RetentionPeriod.RetentionPeriodValue)
+			f8.RetentionPeriodValue = &retentionPeriodValueCopy
 		}
-		ko.Spec.RetentionPeriod = f7
+		ko.Spec.RetentionPeriod = f8
 	} else {
 		ko.Spec.RetentionPeriod = nil
 	}
@@ -161,8 +179,8 @@ func (rm *resourceManager) sdkFind(
 		arn := ackv1alpha1.AWSResourceName(*resp.RuleArn)
 		ko.Status.ACKResourceMetadata.ARN = &arn
 	}
-	if resp.Status != nil {
-		ko.Status.Status = resp.Status
+	if resp.Status != "" {
+		ko.Status.Status = aws.String(string(resp.Status))
 	} else {
 		ko.Status.Status = nil
 	}
@@ -192,7 +210,7 @@ func (rm *resourceManager) newDescribeRequestPayload(
 	res := &svcsdk.GetRuleInput{}
 
 	if r.ko.Status.Identifier != nil {
-		res.SetIdentifier(*r.ko.Status.Identifier)
+		res.Identifier = r.ko.Status.Identifier
 	}
 
 	return res, nil
@@ -217,7 +235,7 @@ func (rm *resourceManager) sdkCreate(
 
 	var resp *svcsdk.CreateRuleOutput
 	_ = resp
-	resp, err = rm.sdkapi.CreateRuleWithContext(ctx, input)
+	resp, err = rm.sdkapi.CreateRule(ctx, input)
 	rm.metrics.RecordAPICall("CREATE", "CreateRule", err)
 	if err != nil {
 		return nil, err
@@ -231,62 +249,80 @@ func (rm *resourceManager) sdkCreate(
 	} else {
 		ko.Spec.Description = nil
 	}
+	if resp.ExcludeResourceTags != nil {
+		f1 := []*svcapitypes.ResourceTag{}
+		for _, f1iter := range resp.ExcludeResourceTags {
+			f1elem := &svcapitypes.ResourceTag{}
+			if f1iter.ResourceTagKey != nil {
+				f1elem.ResourceTagKey = f1iter.ResourceTagKey
+			}
+			if f1iter.ResourceTagValue != nil {
+				f1elem.ResourceTagValue = f1iter.ResourceTagValue
+			}
+			f1 = append(f1, f1elem)
+		}
+		ko.Spec.ExcludeResourceTags = f1
+	} else {
+		ko.Spec.ExcludeResourceTags = nil
+	}
 	if resp.Identifier != nil {
 		ko.Status.Identifier = resp.Identifier
 	} else {
 		ko.Status.Identifier = nil
 	}
 	if resp.LockConfiguration != nil {
-		f2 := &svcapitypes.LockConfiguration{}
+		f3 := &svcapitypes.LockConfiguration{}
 		if resp.LockConfiguration.UnlockDelay != nil {
-			f2f0 := &svcapitypes.UnlockDelay{}
-			if resp.LockConfiguration.UnlockDelay.UnlockDelayUnit != nil {
-				f2f0.UnlockDelayUnit = resp.LockConfiguration.UnlockDelay.UnlockDelayUnit
+			f3f0 := &svcapitypes.UnlockDelay{}
+			if resp.LockConfiguration.UnlockDelay.UnlockDelayUnit != "" {
+				f3f0.UnlockDelayUnit = aws.String(string(resp.LockConfiguration.UnlockDelay.UnlockDelayUnit))
 			}
 			if resp.LockConfiguration.UnlockDelay.UnlockDelayValue != nil {
-				f2f0.UnlockDelayValue = resp.LockConfiguration.UnlockDelay.UnlockDelayValue
+				unlockDelayValueCopy := int64(*resp.LockConfiguration.UnlockDelay.UnlockDelayValue)
+				f3f0.UnlockDelayValue = &unlockDelayValueCopy
 			}
-			f2.UnlockDelay = f2f0
+			f3.UnlockDelay = f3f0
 		}
-		ko.Spec.LockConfiguration = f2
+		ko.Spec.LockConfiguration = f3
 	} else {
 		ko.Spec.LockConfiguration = nil
 	}
-	if resp.LockState != nil {
-		ko.Status.LockState = resp.LockState
+	if resp.LockState != "" {
+		ko.Status.LockState = aws.String(string(resp.LockState))
 	} else {
 		ko.Status.LockState = nil
 	}
 	if resp.ResourceTags != nil {
-		f4 := []*svcapitypes.ResourceTag{}
-		for _, f4iter := range resp.ResourceTags {
-			f4elem := &svcapitypes.ResourceTag{}
-			if f4iter.ResourceTagKey != nil {
-				f4elem.ResourceTagKey = f4iter.ResourceTagKey
+		f5 := []*svcapitypes.ResourceTag{}
+		for _, f5iter := range resp.ResourceTags {
+			f5elem := &svcapitypes.ResourceTag{}
+			if f5iter.ResourceTagKey != nil {
+				f5elem.ResourceTagKey = f5iter.ResourceTagKey
 			}
-			if f4iter.ResourceTagValue != nil {
-				f4elem.ResourceTagValue = f4iter.ResourceTagValue
+			if f5iter.ResourceTagValue != nil {
+				f5elem.ResourceTagValue = f5iter.ResourceTagValue
 			}
-			f4 = append(f4, f4elem)
+			f5 = append(f5, f5elem)
 		}
-		ko.Spec.ResourceTags = f4
+		ko.Spec.ResourceTags = f5
 	} else {
 		ko.Spec.ResourceTags = nil
 	}
-	if resp.ResourceType != nil {
-		ko.Spec.ResourceType = resp.ResourceType
+	if resp.ResourceType != "" {
+		ko.Spec.ResourceType = aws.String(string(resp.ResourceType))
 	} else {
 		ko.Spec.ResourceType = nil
 	}
 	if resp.RetentionPeriod != nil {
-		f6 := &svcapitypes.RetentionPeriod{}
-		if resp.RetentionPeriod.RetentionPeriodUnit != nil {
-			f6.RetentionPeriodUnit = resp.RetentionPeriod.RetentionPeriodUnit
+		f7 := &svcapitypes.RetentionPeriod{}
+		if resp.RetentionPeriod.RetentionPeriodUnit != "" {
+			f7.RetentionPeriodUnit = aws.String(string(resp.RetentionPeriod.RetentionPeriodUnit))
 		}
 		if resp.RetentionPeriod.RetentionPeriodValue != nil {
-			f6.RetentionPeriodValue = resp.RetentionPeriod.RetentionPeriodValue
+			retentionPeriodValueCopy := int64(*resp.RetentionPeriod.RetentionPeriodValue)
+			f7.RetentionPeriodValue = &retentionPeriodValueCopy
 		}
-		ko.Spec.RetentionPeriod = f6
+		ko.Spec.RetentionPeriod = f7
 	} else {
 		ko.Spec.RetentionPeriod = nil
 	}
@@ -297,24 +333,24 @@ func (rm *resourceManager) sdkCreate(
 		arn := ackv1alpha1.AWSResourceName(*resp.RuleArn)
 		ko.Status.ACKResourceMetadata.ARN = &arn
 	}
-	if resp.Status != nil {
-		ko.Status.Status = resp.Status
+	if resp.Status != "" {
+		ko.Status.Status = aws.String(string(resp.Status))
 	} else {
 		ko.Status.Status = nil
 	}
 	if resp.Tags != nil {
-		f9 := []*svcapitypes.Tag{}
-		for _, f9iter := range resp.Tags {
-			f9elem := &svcapitypes.Tag{}
-			if f9iter.Key != nil {
-				f9elem.Key = f9iter.Key
+		f10 := []*svcapitypes.Tag{}
+		for _, f10iter := range resp.Tags {
+			f10elem := &svcapitypes.Tag{}
+			if f10iter.Key != nil {
+				f10elem.Key = f10iter.Key
 			}
-			if f9iter.Value != nil {
-				f9elem.Value = f9iter.Value
+			if f10iter.Value != nil {
+				f10elem.Value = f10iter.Value
 			}
-			f9 = append(f9, f9elem)
+			f10 = append(f10, f10elem)
 		}
-		ko.Spec.Tags = f9
+		ko.Spec.Tags = f10
 	} else {
 		ko.Spec.Tags = nil
 	}
@@ -332,62 +368,84 @@ func (rm *resourceManager) newCreateRequestPayload(
 	res := &svcsdk.CreateRuleInput{}
 
 	if r.ko.Spec.Description != nil {
-		res.SetDescription(*r.ko.Spec.Description)
+		res.Description = r.ko.Spec.Description
+	}
+	if r.ko.Spec.ExcludeResourceTags != nil {
+		f1 := []svcsdktypes.ResourceTag{}
+		for _, f1iter := range r.ko.Spec.ExcludeResourceTags {
+			f1elem := &svcsdktypes.ResourceTag{}
+			if f1iter.ResourceTagKey != nil {
+				f1elem.ResourceTagKey = f1iter.ResourceTagKey
+			}
+			if f1iter.ResourceTagValue != nil {
+				f1elem.ResourceTagValue = f1iter.ResourceTagValue
+			}
+			f1 = append(f1, *f1elem)
+		}
+		res.ExcludeResourceTags = f1
 	}
 	if r.ko.Spec.LockConfiguration != nil {
-		f1 := &svcsdk.LockConfiguration{}
+		f2 := &svcsdktypes.LockConfiguration{}
 		if r.ko.Spec.LockConfiguration.UnlockDelay != nil {
-			f1f0 := &svcsdk.UnlockDelay{}
+			f2f0 := &svcsdktypes.UnlockDelay{}
 			if r.ko.Spec.LockConfiguration.UnlockDelay.UnlockDelayUnit != nil {
-				f1f0.SetUnlockDelayUnit(*r.ko.Spec.LockConfiguration.UnlockDelay.UnlockDelayUnit)
+				f2f0.UnlockDelayUnit = svcsdktypes.UnlockDelayUnit(*r.ko.Spec.LockConfiguration.UnlockDelay.UnlockDelayUnit)
 			}
 			if r.ko.Spec.LockConfiguration.UnlockDelay.UnlockDelayValue != nil {
-				f1f0.SetUnlockDelayValue(*r.ko.Spec.LockConfiguration.UnlockDelay.UnlockDelayValue)
+				if *r.ko.Spec.LockConfiguration.UnlockDelay.UnlockDelayValue > math.MaxInt32 || *r.ko.Spec.LockConfiguration.UnlockDelay.UnlockDelayValue < math.MinInt32 {
+					return nil, fmt.Errorf("error: field UnlockDelayValue is of type int32")
+				}
+				unlockDelayValueCopy := int32(*r.ko.Spec.LockConfiguration.UnlockDelay.UnlockDelayValue)
+				f2f0.UnlockDelayValue = &unlockDelayValueCopy
 			}
-			f1.SetUnlockDelay(f1f0)
+			f2.UnlockDelay = f2f0
 		}
-		res.SetLockConfiguration(f1)
+		res.LockConfiguration = f2
 	}
 	if r.ko.Spec.ResourceTags != nil {
-		f2 := []*svcsdk.ResourceTag{}
-		for _, f2iter := range r.ko.Spec.ResourceTags {
-			f2elem := &svcsdk.ResourceTag{}
-			if f2iter.ResourceTagKey != nil {
-				f2elem.SetResourceTagKey(*f2iter.ResourceTagKey)
+		f3 := []svcsdktypes.ResourceTag{}
+		for _, f3iter := range r.ko.Spec.ResourceTags {
+			f3elem := &svcsdktypes.ResourceTag{}
+			if f3iter.ResourceTagKey != nil {
+				f3elem.ResourceTagKey = f3iter.ResourceTagKey
 			}
-			if f2iter.ResourceTagValue != nil {
-				f2elem.SetResourceTagValue(*f2iter.ResourceTagValue)
+			if f3iter.ResourceTagValue != nil {
+				f3elem.ResourceTagValue = f3iter.ResourceTagValue
 			}
-			f2 = append(f2, f2elem)
+			f3 = append(f3, *f3elem)
 		}
-		res.SetResourceTags(f2)
+		res.ResourceTags = f3
 	}
 	if r.ko.Spec.ResourceType != nil {
-		res.SetResourceType(*r.ko.Spec.ResourceType)
+		res.ResourceType = svcsdktypes.ResourceType(*r.ko.Spec.ResourceType)
 	}
 	if r.ko.Spec.RetentionPeriod != nil {
-		f4 := &svcsdk.RetentionPeriod{}
+		f5 := &svcsdktypes.RetentionPeriod{}
 		if r.ko.Spec.RetentionPeriod.RetentionPeriodUnit != nil {
-			f4.SetRetentionPeriodUnit(*r.ko.Spec.RetentionPeriod.RetentionPeriodUnit)
+			f5.RetentionPeriodUnit = svcsdktypes.RetentionPeriodUnit(*r.ko.Spec.RetentionPeriod.RetentionPeriodUnit)
 		}
 		if r.ko.Spec.RetentionPeriod.RetentionPeriodValue != nil {
-			f4.SetRetentionPeriodValue(*r.ko.Spec.RetentionPeriod.RetentionPeriodValue)
+			if *r.ko.Spec.RetentionPeriod.RetentionPeriodValue > math.MaxInt32 || *r.ko.Spec.RetentionPeriod.RetentionPeriodValue < math.MinInt32 {
+				return nil, fmt.Errorf("error: field RetentionPeriodValue is of type int32")
+			}
+			retentionPeriodValueCopy := int32(*r.ko.Spec.RetentionPeriod.RetentionPeriodValue)
+			f5.RetentionPeriodValue = &retentionPeriodValueCopy
 		}
-		res.SetRetentionPeriod(f4)
+		res.RetentionPeriod = f5
 	}
 	if r.ko.Spec.Tags != nil {
-		f5 := []*svcsdk.Tag{}
-		for _, f5iter := range r.ko.Spec.Tags {
-			f5elem := &svcsdk.Tag{}
-			if f5iter.Key != nil {
-				f5elem.SetKey(*f5iter.Key)
+		f6 := []svcsdktypes.Tag{}
+		for _, f6iter := range r.ko.Spec.Tags {
+			f6elem := &svcsdktypes.Tag{}
+			if f6iter.Key != nil {
+				f6elem.Key = f6iter.Key
 			}
-			if f5iter.Value != nil {
-				f5elem.SetValue(*f5iter.Value)
+			if f6iter.Value != nil {
+				f6elem.Value = f6iter.Value
 			}
-			f5 = append(f5, f5elem)
+			f6 = append(f6, *f6elem)
 		}
-		res.SetTags(f5)
+		res.Tags = f6
 	}
 
 	return res, nil
@@ -428,7 +486,7 @@ func (rm *resourceManager) sdkUpdate(
 
 	var resp *svcsdk.UpdateRuleOutput
 	_ = resp
-	resp, err = rm.sdkapi.UpdateRuleWithContext(ctx, input)
+	resp, err = rm.sdkapi.UpdateRule(ctx, input)
 	rm.metrics.RecordAPICall("UPDATE", "UpdateRule", err)
 	if err != nil {
 		return nil, err
@@ -442,46 +500,63 @@ func (rm *resourceManager) sdkUpdate(
 	} else {
 		ko.Spec.Description = nil
 	}
+	if resp.ExcludeResourceTags != nil {
+		f1 := []*svcapitypes.ResourceTag{}
+		for _, f1iter := range resp.ExcludeResourceTags {
+			f1elem := &svcapitypes.ResourceTag{}
+			if f1iter.ResourceTagKey != nil {
+				f1elem.ResourceTagKey = f1iter.ResourceTagKey
+			}
+			if f1iter.ResourceTagValue != nil {
+				f1elem.ResourceTagValue = f1iter.ResourceTagValue
+			}
+			f1 = append(f1, f1elem)
+		}
+		ko.Spec.ExcludeResourceTags = f1
+	} else {
+		ko.Spec.ExcludeResourceTags = nil
+	}
 	if resp.Identifier != nil {
 		ko.Status.Identifier = resp.Identifier
 	} else {
 		ko.Status.Identifier = nil
 	}
-	if resp.LockState != nil {
-		ko.Status.LockState = resp.LockState
+	if resp.LockState != "" {
+		ko.Status.LockState = aws.String(string(resp.LockState))
 	} else {
 		ko.Status.LockState = nil
 	}
 	if resp.ResourceTags != nil {
-		f4 := []*svcapitypes.ResourceTag{}
-		for _, f4iter := range resp.ResourceTags {
-			f4elem := &svcapitypes.ResourceTag{}
-			if f4iter.ResourceTagKey != nil {
-				f4elem.ResourceTagKey = f4iter.ResourceTagKey
+		f5 := []*svcapitypes.ResourceTag{}
+		for _, f5iter := range resp.ResourceTags {
+			f5elem := &svcapitypes.ResourceTag{}
+			if f5iter.ResourceTagKey != nil {
+				f5elem.ResourceTagKey = f5iter.ResourceTagKey
 			}
-			if f4iter.ResourceTagValue != nil {
-				f4elem.ResourceTagValue = f4iter.ResourceTagValue
+			if f5iter.ResourceTagValue != nil {
+				f5elem.ResourceTagValue = f5iter.ResourceTagValue
 			}
-			f4 = append(f4, f4elem)
+			f5 = append(f5, f5elem)
 		}
-		ko.Spec.ResourceTags = f4
+		ko.Spec.ResourceTags = f5
 	} else {
 		ko.Spec.ResourceTags = nil
 	}
-	if resp.ResourceType != nil {
-		ko.Spec.ResourceType = resp.ResourceType
+	if resp.ResourceType != "" {
+		ko.Spec.ResourceType = aws.String(string(resp.ResourceType))
 	} else {
 		ko.Spec.ResourceType = nil
 	}
 	if resp.RetentionPeriod != nil {
-		f6 := &svcapitypes.RetentionPeriod{}
-		if resp.RetentionPeriod.RetentionPeriodUnit != nil {
-			f6.RetentionPeriodUnit = resp.RetentionPeriod.RetentionPeriodUnit
+		f7 := &svcapitypes.RetentionPeriod{}
+		if resp.RetentionPeriod.RetentionPeriodUnit != "" {
+			f7.RetentionPeriodUnit = aws.String(string(resp.RetentionPeriod.RetentionPeriodUnit))
 		}
 		if resp.RetentionPeriod.RetentionPeriodValue != nil {
-			f6.RetentionPeriodValue = resp.RetentionPeriod.RetentionPeriodValue
+			retentionPeriodValueCopy := int64(*resp.RetentionPeriod.RetentionPeriodValue)
+			f7.RetentionPeriodValue = &retentionPeriodValueCopy
 		}
-		ko.Spec.RetentionPeriod = f6
+		ko.Spec.RetentionPeriod = f7
 	} else {
 		ko.Spec.RetentionPeriod = nil
 	}
@@ -492,8 +567,8 @@ func (rm *resourceManager) sdkUpdate(
 		arn := ackv1alpha1.AWSResourceName(*resp.RuleArn)
 		ko.Status.ACKResourceMetadata.ARN = &arn
 	}
-	if resp.Status != nil {
-		ko.Status.Status = resp.Status
+	if resp.Status != "" {
+		ko.Status.Status = aws.String(string(resp.Status))
 	} else {
 		ko.Status.Status = nil
 	}
@@ -512,37 +587,55 @@ func (rm *resourceManager) newUpdateRequestPayload(
 	res := &svcsdk.UpdateRuleInput{}
 
 	if r.ko.Spec.Description != nil {
-		res.SetDescription(*r.ko.Spec.Description)
+		res.Description = r.ko.Spec.Description
+	}
+	if r.ko.Spec.ExcludeResourceTags != nil {
+		f1 := []svcsdktypes.ResourceTag{}
+		for _, f1iter := range r.ko.Spec.ExcludeResourceTags {
+			f1elem := &svcsdktypes.ResourceTag{}
+			if f1iter.ResourceTagKey != nil {
+				f1elem.ResourceTagKey = f1iter.ResourceTagKey
+			}
+			if f1iter.ResourceTagValue != nil {
+				f1elem.ResourceTagValue = f1iter.ResourceTagValue
+			}
+			f1 = append(f1, *f1elem)
+		}
+		res.ExcludeResourceTags = f1
 	}
 	if r.ko.Status.Identifier != nil {
-		res.SetIdentifier(*r.ko.Status.Identifier)
+		res.Identifier = r.ko.Status.Identifier
 	}
 	if r.ko.Spec.ResourceTags != nil {
-		f2 := []*svcsdk.ResourceTag{}
-		for _, f2iter := range r.ko.Spec.ResourceTags {
-			f2elem := &svcsdk.ResourceTag{}
-			if f2iter.ResourceTagKey != nil {
-				f2elem.SetResourceTagKey(*f2iter.ResourceTagKey)
+		f3 := []svcsdktypes.ResourceTag{}
+		for _, f3iter := range r.ko.Spec.ResourceTags {
+			f3elem := &svcsdktypes.ResourceTag{}
+			if f3iter.ResourceTagKey != nil {
+				f3elem.ResourceTagKey = f3iter.ResourceTagKey
 			}
-			if f2iter.ResourceTagValue != nil {
-				f2elem.SetResourceTagValue(*f2iter.ResourceTagValue)
+			if f3iter.ResourceTagValue != nil {
+				f3elem.ResourceTagValue = f3iter.ResourceTagValue
 			}
-			f2 = append(f2, f2elem)
+			f3 = append(f3, *f3elem)
 		}
-		res.SetResourceTags(f2)
+		res.ResourceTags = f3
 	}
 	if r.ko.Spec.ResourceType != nil {
-		res.SetResourceType(*r.ko.Spec.ResourceType)
+		res.ResourceType = svcsdktypes.ResourceType(*r.ko.Spec.ResourceType)
 	}
 	if r.ko.Spec.RetentionPeriod != nil {
-		f4 := &svcsdk.RetentionPeriod{}
+		f5 := &svcsdktypes.RetentionPeriod{}
 		if r.ko.Spec.RetentionPeriod.RetentionPeriodUnit != nil {
-			f4.SetRetentionPeriodUnit(*r.ko.Spec.RetentionPeriod.RetentionPeriodUnit)
+			f5.RetentionPeriodUnit = svcsdktypes.RetentionPeriodUnit(*r.ko.Spec.RetentionPeriod.RetentionPeriodUnit)
 		}
 		if r.ko.Spec.RetentionPeriod.RetentionPeriodValue != nil {
-			f4.SetRetentionPeriodValue(*r.ko.Spec.RetentionPeriod.RetentionPeriodValue)
+			if *r.ko.Spec.RetentionPeriod.RetentionPeriodValue > math.MaxInt32 || *r.ko.Spec.RetentionPeriod.RetentionPeriodValue < math.MinInt32 {
+				return nil, fmt.Errorf("error: field RetentionPeriodValue is of type int32")
+			}
+			retentionPeriodValueCopy := int32(*r.ko.Spec.RetentionPeriod.RetentionPeriodValue)
+			f5.RetentionPeriodValue = &retentionPeriodValueCopy
 		}
-		res.SetRetentionPeriod(f4)
+		res.RetentionPeriod = f5
 	}
 
 	return res, nil
@@ -564,7 +657,7 @@ func (rm *resourceManager) sdkDelete(
 	}
 	var resp *svcsdk.DeleteRuleOutput
 	_ = resp
-	resp, err = rm.sdkapi.DeleteRuleWithContext(ctx, input)
+	resp, err = rm.sdkapi.DeleteRule(ctx, input)
 	rm.metrics.RecordAPICall("DELETE", "DeleteRule", err)
 	return nil, err
 }
@@ -577,7 +670,7 @@ func (rm *resourceManager) newDeleteRequestPayload(
 	res := &svcsdk.DeleteRuleInput{}
 
 	if r.ko.Status.Identifier != nil {
-		res.SetIdentifier(*r.ko.Status.Identifier)
+		res.Identifier = r.ko.Status.Identifier
 	}
 
 	return res, nil

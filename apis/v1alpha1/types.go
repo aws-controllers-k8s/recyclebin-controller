@@ -37,8 +37,8 @@ type LockConfiguration struct {
 	UnlockDelay *UnlockDelay `json:"unlockDelay,omitempty"`
 }
 
-// Information about the resource tags used to identify resources that are retained
-// by the retention rule.
+// [Tag-level retention rules only] Information about the resource tags used
+// to identify resources that are retained by the retention rule.
 type ResourceTag struct {
 	ResourceTagKey   *string `json:"resourceTagKey,omitempty"`
 	ResourceTagValue *string `json:"resourceTagValue,omitempty"`

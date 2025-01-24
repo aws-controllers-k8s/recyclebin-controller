@@ -25,14 +25,22 @@ type RuleSpec struct {
 
 	// The retention rule description.
 	Description *string `json:"description,omitempty"`
+	// [Region-level retention rules only] Specifies the exclusion tags to use to
+	// identify resources that are to be excluded, or ignored, by a Region-level
+	// retention rule. Resources that have any of these tags are not retained by
+	// the retention rule upon deletion.
+	//
+	// You can't specify exclusion tags for tag-level retention rules.
+	ExcludeResourceTags []*ResourceTag `json:"excludeResourceTags,omitempty"`
 	// Information about the retention rule lock configuration.
 	LockConfiguration *LockConfiguration `json:"lockConfiguration,omitempty"`
-	// Specifies the resource tags to use to identify resources that are to be retained
-	// by a tag-level retention rule. For tag-level retention rules, only deleted
-	// resources, of the specified resource type, that have one or more of the specified
-	// tag key and value pairs are retained. If a resource is deleted, but it does
-	// not have any of the specified tag key and value pairs, it is immediately
-	// deleted without being retained by the retention rule.
+	// [Tag-level retention rules only] Specifies the resource tags to use to identify
+	// resources that are to be retained by a tag-level retention rule. For tag-level
+	// retention rules, only deleted resources, of the specified resource type,
+	// that have one or more of the specified tag key and value pairs are retained.
+	// If a resource is deleted, but it does not have any of the specified tag key
+	// and value pairs, it is immediately deleted without being retained by the
+	// retention rule.
 	//
 	// You can add the same tag key and value pair to a maximum or five retention
 	// rules.
@@ -71,7 +79,7 @@ type RuleStatus struct {
 	// The unique ID of the retention rule.
 	// +kubebuilder:validation:Optional
 	Identifier *string `json:"identifier,omitempty"`
-	// The lock state for the retention rule.
+	// [Region-level retention rules only] The lock state for the retention rule.
 	//
 	//    * locked - The retention rule is locked and can't be modified or deleted.
 	//

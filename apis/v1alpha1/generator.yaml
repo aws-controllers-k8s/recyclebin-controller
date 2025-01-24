@@ -3,7 +3,8 @@ ignore:
   # - Rule
 controller_name: recyclebin
 sdk_names:
-  model_name: rbin 
+  model_name: rbin
+  package_name: rbin
 resources:
   Rule:
     fields:
