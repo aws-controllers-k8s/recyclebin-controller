@@ -24,8 +24,10 @@ import (
 type RuleSpec struct {
 
 	// The retention rule description.
+
 	Description *string `json:"description,omitempty"`
 	// Information about the retention rule lock configuration.
+
 	LockConfiguration *LockConfiguration `json:"lockConfiguration,omitempty"`
 	// [Tag-level retention rules only] Specifies the resource tags to use to identify
 	// resources that are to be retained by a tag-level retention rule. For tag-level
@@ -42,17 +44,23 @@ type RuleSpec struct {
 	// retention rule does not have any resource tags specified. It retains all
 	// deleted resources of the specified resource type in the Region in which the
 	// rule is created, even if the resources are not tagged.
+
 	ResourceTags []*ResourceTag `json:"resourceTags,omitempty"`
 	// The resource type to be retained by the retention rule. Currently, only Amazon
 	// EBS snapshots and EBS-backed AMIs are supported. To retain snapshots, specify
 	// EBS_SNAPSHOT. To retain EBS-backed AMIs, specify EC2_IMAGE.
+
 	// +kubebuilder:validation:Required
+
 	ResourceType *string `json:"resourceType"`
 	// Information about the retention period for which the retention rule is to
 	// retain resources.
+
 	// +kubebuilder:validation:Required
+
 	RetentionPeriod *RetentionPeriod `json:"retentionPeriod"`
 	// Information about the tags to assign to the retention rule.
+
 	Tags []*Tag `json:"tags,omitempty"`
 }
 
@@ -63,7 +71,7 @@ type RuleStatus struct {
 	// constructed ARN for the resource
 	// +kubebuilder:validation:Optional
 	ACKResourceMetadata *ackv1alpha1.ResourceMetadata `json:"ackResourceMetadata"`
-	// All CRS managed by ACK have a common `Status.Conditions` member that
+	// All CRs managed by ACK have a common `Status.Conditions` member that
 	// contains a collection of `ackv1alpha1.Condition` objects that describe
 	// the various terminal states of the CR and its backend AWS service API
 	// resource
