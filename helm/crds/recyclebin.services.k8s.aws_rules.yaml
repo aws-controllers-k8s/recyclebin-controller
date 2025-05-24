@@ -40,7 +40,10 @@ spec:
             description: RuleSpec defines the desired state of Rule.
             properties:
               description:
-                description: The retention rule description.
+                description: |-
+                  The retention rule description.
+
+                  Regex Pattern: `^[\S ]{0,255}$`
                 type: string
               lockConfiguration:
                 description: Information about the retention rule lock configuration.
@@ -189,7 +192,10 @@ spec:
                   type: object
                 type: array
               identifier:
-                description: The unique ID of the retention rule.
+                description: |-
+                  The unique ID of the retention rule.
+
+                  Regex Pattern: `^[0-9a-zA-Z]{11}$`
                 type: string
               lockState:
                 description: |-
