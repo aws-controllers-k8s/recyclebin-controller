@@ -24,6 +24,8 @@ import (
 type RuleSpec struct {
 
 	// The retention rule description.
+	//
+	// Regex Pattern: `^[\S ]{0,255}$`
 	Description *string `json:"description,omitempty"`
 	// Information about the retention rule lock configuration.
 	LockConfiguration *LockConfiguration `json:"lockConfiguration,omitempty"`
@@ -70,6 +72,8 @@ type RuleStatus struct {
 	// +kubebuilder:validation:Optional
 	Conditions []*ackv1alpha1.Condition `json:"conditions"`
 	// The unique ID of the retention rule.
+	//
+	// Regex Pattern: `^[0-9a-zA-Z]{11}$`
 	// +kubebuilder:validation:Optional
 	Identifier *string `json:"identifier,omitempty"`
 	// [Region-level retention rules only] The lock state for the retention rule.
