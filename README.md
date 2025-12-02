@@ -1,12 +1,9 @@
 # ACK service controller for Amazon Recycle Bin
 
 This repository contains source code for the AWS Controllers for Kubernetes
-(ACK) service controller for .
+(ACK) service controller for Amazon Recycle Bin.
 
-Please [log issues][ack-issues] and feedback on the main AWS Controllers for
-Kubernetes Github project.
-
-[ack-issues]: https://github.com/aws/aws-controllers-k8s/issues
+Please [log issues](https://github.com/aws-controllers-k8s/community/issues) and feedback on the main AWS Controllers for Kubernetes Github project.
 
 ## Contributing
 
