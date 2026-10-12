@@ -18,9 +18,9 @@ import (
 
 	ackrtlog "github.com/aws-controllers-k8s/runtime/pkg/runtime/log"
 	ackutil "github.com/aws-controllers-k8s/runtime/pkg/util"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	svcsdk "github.com/aws/aws-sdk-go-v2/service/rbin"
 	svcsdktypes "github.com/aws/aws-sdk-go-v2/service/rbin/types"
-	"github.com/aws/aws-sdk-go/aws"
 
 	svcapitypes "github.com/aws-controllers-k8s/recyclebin-controller/apis/v1alpha1"
 )
