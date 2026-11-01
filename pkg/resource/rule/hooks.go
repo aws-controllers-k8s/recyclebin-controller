@@ -55,11 +55,11 @@ func customPreCompare(
 	a *resource,
 	b *resource,
 ) {
-	if len(a.ko.Spec.Tags) != len(b.ko.Spec.Tags) {
+	aTags, _ := convertToOrderedACKTags(a.ko.Spec.Tags)
+	bTags, _ := convertToOrderedACKTags(b.ko.Spec.Tags)
+	// from=latest (b), to=desired (a), matching sync.go
+	addedTags, _, removedTags := ackcompare.GetTagsDifference(bTags, aTags)
+	if len(addedTags) > 0 || len(removedTags) > 0 {
 		delta.Add("Spec.Tags", a.ko.Spec.Tags, b.ko.Spec.Tags)
-	} else if len(a.ko.Spec.Tags) > 0 {
-		if !tags.EqualTags(a.ko.Spec.Tags, b.ko.Spec.Tags) {
-			delta.Add("Spec.Tags", a.ko.Spec.Tags, b.ko.Spec.Tags)
-		}
 	}
 }

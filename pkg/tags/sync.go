@@ -15,9 +15,12 @@ package tags
 
 import (
 	"context"
+	"maps"
+	"slices"
 
+	ackcompare "github.com/aws-controllers-k8s/runtime/pkg/compare"
 	ackrtlog "github.com/aws-controllers-k8s/runtime/pkg/runtime/log"
-	ackutil "github.com/aws-controllers-k8s/runtime/pkg/util"
+	acktags "github.com/aws-controllers-k8s/runtime/pkg/tags"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	svcsdk "github.com/aws/aws-sdk-go-v2/service/rbin"
 	svcsdktypes "github.com/aws/aws-sdk-go-v2/service/rbin/types"
@@ -82,14 +85,20 @@ func SyncResourceTags(
 		exit(err)
 	}()
 
-	addedOrUpdated, removed := computeTagsDelta(latestTags, desiredTags)
+	added, _, removed := ackcompare.GetTagsDifference(
+		toACKTags(latestTags),
+		toACKTags(desiredTags),
+	)
+	if len(added) == 0 && len(removed) == 0 {
+		return nil
+	}
 
 	if len(removed) > 0 {
 		_, err = client.UntagResource(
 			ctx,
 			&svcsdk.UntagResourceInput{
 				ResourceArn: aws.String(resourceARN),
-				TagKeys:     removed,
+				TagKeys:     slices.Sorted(maps.Keys(removed)),
 			},
 		)
 		mr.RecordAPICall("UPDATE", "UntagResource", err)
@@ -98,12 +107,19 @@ func SyncResourceTags(
 		}
 	}
 
-	if len(addedOrUpdated) > 0 {
+	if len(added) > 0 {
+		tags := make([]svcsdktypes.Tag, 0, len(added))
+		for _, k := range slices.Sorted(maps.Keys(added)) {
+			tags = append(tags, svcsdktypes.Tag{
+				Key:   aws.String(k),
+				Value: aws.String(added[k]),
+			})
+		}
 		_, err = client.TagResource(
 			ctx,
 			&svcsdk.TagResourceInput{
 				ResourceArn: aws.String(resourceARN),
-				Tags:        sdkTagsFromResourceTags(addedOrUpdated),
+				Tags:        tags,
 			},
 		)
 		mr.RecordAPICall("UPDATE", "TagResource", err)
@@ -114,60 +130,19 @@ func SyncResourceTags(
 	return nil
 }
 
-// computeTagsDelta compares two Tag arrays and return two different list
-// containing the addedOrupdated and removed tags. The removed tags array
-// only contains the tags Keys.
-func computeTagsDelta(
-	a []*svcapitypes.Tag,
-	b []*svcapitypes.Tag,
-) (addedOrUpdated []*svcapitypes.Tag, removed []string) {
-	var visitedIndexes []string
-mainLoop:
-	for _, aElement := range a {
-		visitedIndexes = append(visitedIndexes, *aElement.Key)
-		for _, bElement := range b {
-			if equalStrings(aElement.Key, bElement.Key) {
-				if !equalStrings(aElement.Value, bElement.Value) {
-					addedOrUpdated = append(addedOrUpdated, bElement)
-				}
-				continue mainLoop
-			}
+// toACKTags converts a *svcapitypes.Tag array to an acktags.Tags map.
+// Tags with a nil key are skipped and nil values are treated as empty strings.
+func toACKTags(tags []*svcapitypes.Tag) acktags.Tags {
+	m := make(acktags.Tags)
+	for _, t := range tags {
+		if t == nil || t.Key == nil {
+			continue
 		}
-		removed = append(removed, *aElement.Key)
-	}
-	for _, bElement := range b {
-		if !ackutil.InStrings(*bElement.Key, visitedIndexes) {
-			addedOrUpdated = append(addedOrUpdated, bElement)
+		v := ""
+		if t.Value != nil {
+			v = *t.Value
 		}
+		m[*t.Key] = v
 	}
-	return addedOrUpdated, removed
-}
-
-// equalTags returns true if two Tag arrays are equal regardless of the order
-// of their elements.
-func EqualTags(
-	a []*svcapitypes.Tag,
-	b []*svcapitypes.Tag,
-) bool {
-	addedOrUpdated, removed := computeTagsDelta(a, b)
-	return len(addedOrUpdated) == 0 && len(removed) == 0
-}
-
-// svcTagsFromResourceTags transforms a *svcapitypes.Tag array to a *svcsdk.Tag array.
-func sdkTagsFromResourceTags(rTags []*svcapitypes.Tag) []svcsdktypes.Tag {
-	tags := make([]svcsdktypes.Tag, len(rTags))
-	for i := range rTags {
-		tags[i] = svcsdktypes.Tag{
-			Key:   rTags[i].Key,
-			Value: rTags[i].Value,
-		}
-	}
-	return tags
-}
-
-func equalStrings(a, b *string) bool {
-	if a == nil {
-		return b == nil || *b == ""
-	}
-	return (*a == "" && b == nil) || *a == *b
+	return m
 }
